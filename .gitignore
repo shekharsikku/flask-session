@@ -1,0 +1,9 @@
+# Python Virtual Environment, Editor directories
+.venv
+.idea
+.vscode
+
+# Python Cache, Environment, Temp files 
+__pycache__
+temp
+.env
