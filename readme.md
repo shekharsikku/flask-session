@@ -1,11 +1,44 @@
-**Simple Flask App with Login and Authentication Session**
+# Flask Session Authentication
 
-#### Getting Started with Flask
+Session Authentication System using Python Flask
 
-**First, add a .env file in root dir of project and add some important fields that provided in local.env file**
+## Setup Instructions
 
-**Then, run the development server using - *python main.py***
+### Create Virtual Environment
 
-##### Open http://localhost:8100 in your browser to see the result
+```bash
+python -m venv (virtual environment name)
+```
 
----
+### Activate Virtual Environment
+
+```bash
+source (virtual environment name)/Scripts/activate
+```
+
+### Install Required Modules
+
+```bash
+python -m pip install -r requirements.txt
+```
+
+### Environment Variables Setup
+
+Change, **local.env** filename to **.env** and add all required fields.
+
+### Start Development Server
+
+```bash
+python main.py
+```
+
+### Test Api Endpoints
+
+You need tools like **Postman** or you can use VS Code extension **Thunder Client**.
+
+#### Use proxy for test Api endpoints 
+
+- For Debug Mode - http://127.0.0.1:8100 
+- For WSGI Server - http://127.0.0.1:8070
+
+***
