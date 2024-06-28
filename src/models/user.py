@@ -16,8 +16,9 @@ class User(db.Model):
     image = db.Column(db.String(150), nullable=True)
     bio = db.Column(db.String(50), nullable=True)
     setup = db.Column(db.Boolean, default=False)
-    created_at = db.Column(db.DateTime, default=datetime.now(timezone.utc))
-    updated_at = db.Column(db.DateTime, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc))
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), 
+                           onupdate=lambda: datetime.now(timezone.utc))
 
     def __init__(self, email, password):
         self.email = email
