@@ -8,7 +8,7 @@ from src.models.user import User
 from src.utils.response import ApiResponse
 from src.utils.helpers import has_empty_field, global_session_user, clear_session_cookies
 from src.utils.schema import (register_user_schema, login_user_schema, user_data_schema, login_data_schema,
-                              update_user_schema)
+                              update_user_schema, change_password_schema)
 
 
 user = Blueprint("user", __name__, url_prefix="/api/user")
@@ -88,9 +88,9 @@ def login_user():
             return ApiResponse(404, "User not found!")
         
         user_data = login_data_schema.dump(exists_user)
-        is_verify = verify_hash(password, user_data["password"])
+        is_verified = verify_hash(password, user_data["password"])
 
-        if not is_verify:
+        if not is_verified:
             clear_session_cookies()
             return ApiResponse(403, "Incorrect password!")
 
@@ -177,3 +177,39 @@ def update_user(session_user, session_uid, *args, **kwargs):
 
     except Exception as e:
         return ApiResponse(500, "An unexpected error occurred!", None, str(e))
+
+
+# Api route for change user password - "/api/user/change-password"
+@user.route("/change-password", methods=["PUT", "PATCH"])
+@login_required
+def change_password(session_user, session_uid, *args, **kwargs):
+    try:
+        user_data = change_password_schema.load(request.get_json())
+        
+        old_password = user_data.get("old_password")
+        new_password = user_data.get("new_password")
+
+        if old_password == new_password:
+            return ApiResponse(400, "Please, choose a different password!")
+
+        is_verified = verify_hash(old_password, session_user.password)
+
+        if not is_verified:
+            return ApiResponse(403, "Incorrect old password!")
+        
+        hashed_password = generate_hash(new_password)
+
+        update_result = User.update_user(id=session_uid, data={"password": hashed_password})
+
+        if update_result:
+            response_data = user_data_schema.dump(update_result)
+            return ApiResponse(200, "Password changed successfully!", response_data)
+
+        return ApiResponse(400, "Password cannot changed!")
+
+    except ValidationError as e:
+        return ApiResponse(400, "Validation errors occurred!", None, e.messages)
+
+    except Exception as e:
+        return ApiResponse(500, "An unexpected error occurred!", None, str(e))
+    

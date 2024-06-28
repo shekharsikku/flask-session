@@ -6,7 +6,11 @@ from src.models.user import User
 
 class RegisterUserSchema(Schema):
     email = fields.Str(required=True, validate=validate.Email())
-    password = fields.Str(required=True, validate=validate.Length(min=6))
+    password = fields.Str(required=True, validate=[
+        validate.Length(min=6),
+        validate.Regexp(r'^(?=.*[A-Z])(?=.*[a-z])(?=.*\d).{6,}$',
+                        error="Password must have an uppercase, a lowercase letter, and a number!")
+        ])
 
 
 class LoginUserSchema(Schema):
@@ -32,6 +36,16 @@ class UpdateUserSchema(Schema):
     bio = fields.Str(allow_none=True)
 
 
+class ChangePasswordSchema(Schema):
+    old_password = fields.Str(required=True)
+    new_password = fields.Str(required=True, validate=[
+        validate.Length(min=6),
+        validate.Regexp(r'^(?=.*[A-Z])(?=.*[a-z])(?=.*\d).{6,}$',
+                        error="Password must have an uppercase, a lowercase letter, and a number!")
+        ])
+
+
+change_password_schema = ChangePasswordSchema()
 register_user_schema = RegisterUserSchema()
 login_user_schema = LoginUserSchema()
 update_user_schema = UpdateUserSchema()
