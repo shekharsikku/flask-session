@@ -6,6 +6,7 @@ from functools import wraps
 from src.configs import db
 from src.models.user import User
 from src.utils.response import ApiResponse
+from src.utils.uploads import upload_image_on_cloudinary, delete_image_from_cloudinary, extract_uuid_from_url
 from src.utils.helpers import has_empty_field, global_session_user, clear_session_cookies
 from src.utils.schema import (register_user_schema, login_user_schema, user_data_schema, login_data_schema,
                               update_user_schema, change_password_schema)
@@ -209,6 +210,63 @@ def change_password(session_user, session_uid, *args, **kwargs):
 
     except ValidationError as e:
         return ApiResponse(400, "Validation errors occurred!", None, e.messages)
+
+    except Exception as e:
+        return ApiResponse(500, "An unexpected error occurred!", None, str(e))
+    
+
+@user.route("/update-image", methods=["PUT", "PATCH"])
+@login_required
+def update_image(session_user, session_uid, *args, **kwargs):
+    try:
+        if "image" not in request.files:
+            return ApiResponse(400, "Image file is required!")
+
+        image_file = request.files["image"]
+
+        if image_file.filename == "":
+            return ApiResponse(400, "No any selected file!")
+
+        if session_user.image and session_user.image != "":
+            public_uuid = extract_uuid_from_url(session_user.image)
+            delete_image_from_cloudinary(public_uuid)
+
+        upload_result = upload_image_on_cloudinary(image_file)
+
+        secure_url = upload_result.get("secure_url")
+        public_id = upload_result.get("public_id")
+
+        if not secure_url or not public_id:
+            return ApiResponse(500, "Image file upload error!")
+        
+        update_result = User.update_user(id=session_uid, data={"image": secure_url})
+
+        if update_result:
+            response_data = user_data_schema.dump(update_result)
+            return ApiResponse(200, "Image uploaded successfully!", response_data)
+
+        return ApiResponse(400, "Failed to update image!")
+
+    except Exception as e:
+        return ApiResponse(500, "An unexpected error occurred!", None, str(e))
+    
+
+@user.route("/delete-image", methods=["DELETE"])
+@login_required
+def delete_image(session_user, session_uid, *args, **kwargs):
+    try:
+        if session_user.image and session_user.image != "":
+            public_uuid = extract_uuid_from_url(session_user.image)
+            result = delete_image_from_cloudinary(public_uuid)
+
+            if result:
+                update_result = User.update_user(id=session_uid, data={"image": None})
+                if update_result:
+                    response_data = user_data_schema.dump(update_result)
+                    return ApiResponse(200, "Image deleted successfully!", response_data)
+                
+            return ApiResponse(400, "Failed to delete image!")
+        return ApiResponse(400, "Image file not available!")
 
     except Exception as e:
         return ApiResponse(500, "An unexpected error occurred!", None, str(e))
