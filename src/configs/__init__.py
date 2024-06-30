@@ -1,14 +1,17 @@
 from sqlalchemy.exc import SQLAlchemyError
 from flask_sqlalchemy import SQLAlchemy
+from flask_session import Session
 from sqlalchemy import text
 from flask_cors import CORS
 from flask import Flask
 import pymysql
+import redis
 import sys
 
 from src.utils import envs, cors
 
 
+redis_client = redis.from_url(url=envs["REDIS_URI"])
 pymysql.install_as_MySQLdb()
 db = SQLAlchemy()
 
@@ -16,14 +19,24 @@ db = SQLAlchemy()
 def init_flask_app():
     app = Flask(__name__)
 
+    try:
+        redis_client.ping()
+    except redis.ConnectionError as e:
+        print(f"Redis connection error! \n{e}")
+        sys.exit(1)
+    else:
+        print("Redis connection success!")
+
     app.config["SQLALCHEMY_DATABASE_URI"] = envs["DATABASE_URI"]
     app.config["SQLALCHEMY_TRACK_MODIFICATION"] = False
     app.config["SQLALCHEMY_ECHO"] = False
     app.config["SECRET_KEY"] = envs["SECRET_KEY"]
-    app.config["SESSION_TYPE"] = "filesystem"
+    app.config["SESSION_TYPE"] = "redis"
+    app.config["SESSION_REDIS"] = redis_client
     app.config["SESSION_PERMANENT"] = False
     app.config["SESSION_USE_SIGNER"] = True
     
+    Session(app)
     db.init_app(app)
 
     CORS(app, resources={r"/api/*": {

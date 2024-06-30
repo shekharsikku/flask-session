@@ -9,6 +9,7 @@ class EnvConfig:
     def __init__(self):
         self.__variables = {
             "DATABASE_URI": getenv("DATABASE_URI"),
+            "REDIS_URI": getenv("REDIS_URI"),
             "SECRET_KEY": getenv("SECRET_KEY"),
             "CORS_ORIGIN": getenv("CORS_ORIGIN", "*"),
             "SERVER_MODE": getenv("SERVER_MODE", "development"),
