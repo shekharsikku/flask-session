@@ -1,4 +1,9 @@
 from flask import session, g
+from redis import RedisError
+from typing import Any, Optional
+import json
+
+from src.configs import redis_client
 
 
 def has_empty_field(fields: dict) -> bool:
@@ -17,3 +22,24 @@ def clear_session_cookies() -> object:
     session_uid = session.pop("uid", None)
     session.clear()
     return {"user": session_user, "uid": session_uid}
+
+
+def store_to_redis(type: str, key: str, data: Any) -> bool:
+    store_key = f"{type}:{key}"
+    try:
+        store_data = json.dumps(data)
+        return redis_client.set(store_key, store_data, 3600)
+    except (RedisError, TypeError, ValueError) as e:
+        print(f"Failed to store data in Redis: {e}")
+        return False
+
+
+def retrieve_from_redis(type: str, key: str) -> Optional[Any]:
+    store_key = f"{type}:{key}"
+    try:
+        store_value = redis_client.get(store_key)
+        if store_value:
+            return json.loads(store_value.decode("utf-8"))
+    except (RedisError, json.JSONDecodeError, UnicodeDecodeError) as e:
+        print(f"Failed to retrieve data from Redis: {e}")
+    return None
