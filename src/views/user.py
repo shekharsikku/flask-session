@@ -3,11 +3,12 @@ from bcrypt import hashpw, gensalt, checkpw
 from marshmallow import ValidationError
 from functools import wraps
 
-from src.configs import db
+from src.configs import db, redis_client
 from src.models.user import User
 from src.utils.response import ApiResponse
 from src.utils.uploads import upload_image_on_cloudinary, delete_image_from_cloudinary, extract_uuid_from_url
-from src.utils.helpers import has_empty_field, global_session_user, clear_session_cookies
+from src.utils.helpers import (has_empty_field, global_session_user, clear_session_cookies, store_to_redis, 
+                               retrieve_from_redis)
 from src.utils.schema import (register_user_schema, login_user_schema, user_data_schema, login_data_schema,
                               update_user_schema, change_password_schema)
 
@@ -99,6 +100,7 @@ def login_user():
         session["uid"] = user_data["id"]
 
         response_data = user_data_schema.dump(exists_user)
+        store_to_redis("user", response_data["id"], response_data)
         return ApiResponse(200, "User login successfully!", response_data)
     
     except ValidationError as e:
@@ -112,6 +114,7 @@ def login_user():
 @user.route("/logout", methods=["GET", "DELETE"])
 def logout_user():
     session_value = clear_session_cookies()
+    redis_client.delete(f"user:{session_value['uid']}")
     response = make_response(session_value)
     response.set_cookie("session", "", expires=0)
     return ApiResponse(response.status_code, "User logout successfully!")
@@ -126,10 +129,17 @@ def login_required(func):
             session_uid = session.get("uid")
 
             if session_key and session_uid:
-                session_user = User.query.filter_by(**{session_key: session[session_key], "id": session_uid}).first()
+                cache_data = retrieve_from_redis("user", session_uid)
                 
+                if cache_data is not None:
+                    return func(cache_data, session_uid, *args, **kwargs)
+
+                session_user = User.query.filter_by(**{session_key: session[session_key], "id": session_uid}).first()
+
                 if session_user:
-                    return func(session_user, session_uid, *args, **kwargs)
+                    query_data = user_data_schema.dump(session_user)
+                    store_to_redis("user", session_uid, query_data)
+                    return func(query_data, session_uid, *args, **kwargs)
 
             return func(*args, **kwargs)
         else:
@@ -142,8 +152,7 @@ def login_required(func):
 @login_required
 def get_session_user(session_user, session_uid, *args, **kwargs):
     if g.user and g.uid and session_user:
-        response_data = user_data_schema.dump(session_user)
-        return ApiResponse(200, "User information!", response_data)
+        return ApiResponse(200, "User information!", session_user)
     return ApiResponse(401, "Unauthorized user!")
 
 
@@ -156,7 +165,7 @@ def update_user(session_user, session_uid, *args, **kwargs):
 
         username = user_data["username"]
 
-        if username != session_user.username:
+        if username != session_user["username"]:
             if User.query.filter_by(username=username).first():
                 return ApiResponse(409, "Username already exits!")
 
@@ -169,6 +178,7 @@ def update_user(session_user, session_uid, *args, **kwargs):
 
         if update_result:
             response_data = user_data_schema.dump(update_result)
+            store_to_redis("user", session_uid, response_data)
             return ApiResponse(200, "Profile updated successfully!", response_data)
 
         return ApiResponse(400, "Profile update not completed!")
@@ -193,7 +203,10 @@ def change_password(session_user, session_uid, *args, **kwargs):
         if old_password == new_password:
             return ApiResponse(400, "Please, choose a different password!")
 
-        is_verified = verify_hash(old_password, session_user.password)
+        req_user = User.query.filter_by(id=session_uid).first()
+        req_data = login_data_schema.dump(req_user)
+
+        is_verified = verify_hash(old_password, req_data["password"])
 
         if not is_verified:
             return ApiResponse(403, "Incorrect old password!")
@@ -204,6 +217,7 @@ def change_password(session_user, session_uid, *args, **kwargs):
 
         if update_result:
             response_data = user_data_schema.dump(update_result)
+            store_to_redis("user", session_uid, response_data)
             return ApiResponse(200, "Password changed successfully!", response_data)
 
         return ApiResponse(400, "Password cannot changed!")
@@ -227,8 +241,8 @@ def update_image(session_user, session_uid, *args, **kwargs):
         if image_file.filename == "":
             return ApiResponse(400, "No any selected file!")
 
-        if session_user.image and session_user.image != "":
-            public_uuid = extract_uuid_from_url(session_user.image)
+        if session_user["image"] and session_user["image"] != "":
+            public_uuid = extract_uuid_from_url(session_user["image"])
             delete_image_from_cloudinary(public_uuid)
 
         upload_result = upload_image_on_cloudinary(image_file)
@@ -243,6 +257,7 @@ def update_image(session_user, session_uid, *args, **kwargs):
 
         if update_result:
             response_data = user_data_schema.dump(update_result)
+            store_to_redis("user", session_uid, response_data)
             return ApiResponse(200, "Image uploaded successfully!", response_data)
 
         return ApiResponse(400, "Failed to update image!")
@@ -255,14 +270,15 @@ def update_image(session_user, session_uid, *args, **kwargs):
 @login_required
 def delete_image(session_user, session_uid, *args, **kwargs):
     try:
-        if session_user.image and session_user.image != "":
-            public_uuid = extract_uuid_from_url(session_user.image)
+        if session_user["image"] and session_user["image"] != "":
+            public_uuid = extract_uuid_from_url(session_user["image"])
             result = delete_image_from_cloudinary(public_uuid)
 
             if result:
                 update_result = User.update_user(id=session_uid, data={"image": None})
                 if update_result:
                     response_data = user_data_schema.dump(update_result)
+                    store_to_redis("user", session_uid, response_data)
                     return ApiResponse(200, "Image deleted successfully!", response_data)
                 
             return ApiResponse(400, "Failed to delete image!")
