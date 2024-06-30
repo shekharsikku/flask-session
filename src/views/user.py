@@ -2,8 +2,9 @@ from flask import Blueprint, request, session, g, make_response
 from bcrypt import hashpw, gensalt, checkpw
 from marshmallow import ValidationError
 from functools import wraps
+from logging import getLogger
 
-from src.configs import db, redis_client
+from src.configs import db, rc
 from src.models.user import User
 from src.utils.response import ApiResponse
 from src.utils.uploads import upload_image_on_cloudinary, delete_image_from_cloudinary, extract_uuid_from_url
@@ -32,7 +33,8 @@ def before_request():
 @user.after_request
 def after_request(response):
     global_session_user()
-    print(f"Current session user: {g.user} & uid: {g.uid}")
+    logger = getLogger("session")
+    logger.info(f" * Session is active for {g.user}@{g.uid}")
     return response
 
 
@@ -114,7 +116,7 @@ def login_user():
 @user.route("/logout", methods=["GET", "DELETE"])
 def logout_user():
     session_value = clear_session_cookies()
-    redis_client.delete(f"user:{session_value['uid']}")
+    rc.delete(f"user:{session_value['uid']}")
     response = make_response(session_value)
     response.set_cookie("session", "", expires=0)
     return ApiResponse(response.status_code, "User logout successfully!")
