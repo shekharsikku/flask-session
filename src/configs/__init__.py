@@ -4,15 +4,13 @@ from flask_session import Session
 from sqlalchemy import text
 from flask_cors import CORS
 from flask import Flask
-import pymysql
 import redis
 import sys
 
 from src.utils import envs, cors
 
 
-redis_client = redis.from_url(url=envs["REDIS_URI"])
-pymysql.install_as_MySQLdb()
+rc = redis.from_url(url=envs["REDIS_URI"])
 db = SQLAlchemy()
 
 
@@ -20,7 +18,7 @@ def init_flask_app():
     app = Flask(__name__)
 
     try:
-        redis_client.ping()
+        rc.ping()
     except redis.ConnectionError as e:
         print(f"Redis connection error! \n{e}")
         sys.exit(1)
@@ -32,7 +30,7 @@ def init_flask_app():
     app.config["SQLALCHEMY_ECHO"] = False
     app.config["SECRET_KEY"] = envs["SECRET_KEY"]
     app.config["SESSION_TYPE"] = "redis"
-    app.config["SESSION_REDIS"] = redis_client
+    app.config["SESSION_REDIS"] = rc
     app.config["SESSION_PERMANENT"] = False
     app.config["SESSION_USE_SIGNER"] = True
     
