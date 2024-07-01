@@ -4,10 +4,12 @@ from os import getenv
 
 
 class EnvConfig:
-    load_dotenv()
-
     def __init__(self):
-        self.__variables = {
+        load_dotenv()
+
+        required_keys = ["DATABASE_URI", "REDIS_URI", "SECRET_KEY"]
+
+        self.__variables: Dict[str, Any] = {
             "DATABASE_URI": getenv("DATABASE_URI"),
             "REDIS_URI": getenv("REDIS_URI"),
             "SECRET_KEY": getenv("SECRET_KEY"),
@@ -16,20 +18,31 @@ class EnvConfig:
             "PORT": int(getenv("PORT", "4000"))
         }
 
-    def environments(self) -> Dict[str, Any]:
-        return self.__variables
+        missing = [key for key in required_keys if not self.__variables[key]]
+
+        if missing:
+            raise EnvironmentError(f"Missing required environment variables: {', '.join(missing)}")
+
+    def __contains__(self, key: str) -> bool:
+        return key in self.__variables
+    
+    def __getitem__(self, key) -> (Any | None):
+        return self.__variables.get(key)
 
 
 class CorsConfig:
     def __init__(self):
-        self.__variables = {
+        self.__variables: Dict[str, Any] = {
             "ALLOWED_ORIGIN": envs["CORS_ORIGIN"].split(", "),
             "WITH_CREDENTIAL": True
         }
-
-    def configs(self) -> Dict[str, Any]:
-        return self.__variables
     
+    def __contains__(self, key: str) -> bool:
+        return key in self.__variables
+    
+    def __getitem__(self, key) -> (Any | None):
+        return self.__variables.get(key)
 
-envs = EnvConfig().environments()
-cors = CorsConfig().configs()
+
+envs = EnvConfig()
+cors = CorsConfig()

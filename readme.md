@@ -2,7 +2,7 @@
 
 **Session Based Api using Python Flask**
 
-## 🚀 Setup Instructions
+## Setup Instructions
 
 **Create Virtual Environment**
 
@@ -27,15 +27,18 @@ python -m pip install -r requirements.txt
 Change, **.env.sample** filename to **.env** and add all required fields.
 
 ```env
-MYSQLDB_URI=""
+CLOUDINARY_URL=""
+DATABASE_URI=""
+REDIS_URI=""
 SECRET_KEY=""
-CORS_ORIGIN="*"
+CORS_ORIGIN=""
+PORT="4000"
 SERVER_MODE="development"
 ```
 
 Server mode should be - development/production
 
-**Start Development Server**
+**Start Flask Server**
 
 ```bash
 python main.py
@@ -43,20 +46,10 @@ python main.py
 
 **Test Api Endpoints**
 
-You need tools like **Postman**, **ApiDog** or you can use Visual Studio Code extension **Thunder Client**.
-
-**Use proxy for test Api endpoints**
-
-- For Debug Mode - if server mode is development
+You need tools like **Postman**, **ApiDog** or **Thunder Client**.
 
 ```bash
-http://localhost:8070
-```
-
-- For WSGI Server - if server mode is deployment
-
-```bash
-http://localhost:8080
+http://localhost:<PORT>
 ```
 
 ### **Code by [shekharsikku](https://linkedin.com/in/shekharsikku)**
