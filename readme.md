@@ -1,8 +1,8 @@
-# **Flask Session**
+## **Flask Session**
 
 **Session Based Api using Python Flask**
 
-## Setup Instructions
+### **Setup Instructions**
 
 **Create Virtual Environment**
 
@@ -52,6 +52,4 @@ You need tools like **Postman**, **ApiDog** or **Thunder Client**.
 http://localhost:<PORT>
 ```
 
-### **Code by [shekharsikku](https://linkedin.com/in/shekharsikku)**
-
----
+### **Code by [Shekhar Sharma](https://linkedin.com/in/shekharsikku)**
