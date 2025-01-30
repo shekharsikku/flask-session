@@ -1,26 +1,11 @@
 from logging import basicConfig, DEBUG
-from waitress import serve
-from src.env import server_mode
-from src.app import app
+from src.app import app, socketio
 
 
 if __name__ == "__main__":
     try:
-        if server_mode == "development":
-            basicConfig(level=DEBUG)
-            app.run(debug=True, host="localhost", port=8070)
-        elif server_mode == "deployment":
-            print("Running at: http://localhost:8080")
-            serve(app=app)
-        else:
-            raise Exception("Unable to run Flask Application!")
+        basicConfig(level=DEBUG)
+        socketio.run(app=app, host="localhost", port=4000, debug=True)
     except Exception as e:
-        print(e)
-    
-
-# >>> from server import app, db
-# >>> with app.app_context():
-# >>>     db.create_all()
-
-# source .venv/Scripts/activate
- 
+        print(f"Error: {e}")
+        
