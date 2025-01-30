@@ -2,9 +2,13 @@
 .venv
 .idea
 .vscode
+.vercel
 
 # env variables
 .env
 
 # python cache files
 __pycache__
+
+# test code dir/files
+**/**/test
