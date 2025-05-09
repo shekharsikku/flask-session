@@ -59,6 +59,6 @@ http://localhost:8070
 http://localhost:8080
 ```
 
-### 🪄 Code by Shekhar Sharma
+### 🪄 Code by **[shekharsikku](https://linkedin.com/in/shekharsikku)**
 
 ---
