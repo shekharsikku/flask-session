@@ -2,6 +2,7 @@ from werkzeug.exceptions import HTTPException
 from sqlalchemy.exc import SQLAlchemyError
 from flask_socketio import SocketIO, emit, send
 from flask import redirect, request
+from typing import Dict, Any
 import eventlet
 
 from src.configs import init_app
@@ -17,29 +18,42 @@ socketio = SocketIO(
 )
 
 
+# Handling a custom event for socket.io client
+
+user_sockets: Dict[str, Any] = {}
+
+
+@socketio.on("connect")
+def handle_connect():
+    user_id = request.args.get("uid")
+
+    if user_id:
+        user_sockets[user_id] = request.sid
+        print(f"User connected of uid {user_id} with sid {request.sid}")
+        
+        online_users = {user_id: socket_id for user_id, socket_id in user_sockets.items()}
+        emit("users:online", online_users, broadcast=True)
+
+
+@socketio.on("disconnect")
+def handle_disconnect():
+    user_id = next((key for key, value in user_sockets.items() if value == request.sid), None)
+
+    if user_id:
+        del user_sockets[user_id]
+        print(f"User disconnected of uid {user_id} disconnected")
+
+        online_users = {user_id: socket_id for user_id, socket_id in user_sockets.items()}
+        emit("users:online", online_users, broadcast=True)
+
+
 @socketio.on('message')
 def handle_message(msg):
     print('Received message:', msg)
     send('Response from Flask Server: ' + msg)  # Send a message back to client
 
 
-@socketio.on("connect")
-def handle_connect():
-    user_id = request.args.get('userId')  # Flask's request object gives access to the query params
-
-    socket_id = request.sid
-
-    print(f"User connected with userId: {user_id}", socket_id)
-
-    emit("response_event", {"message": f"Hello user {user_id}!"})
-
-
-@socketio.on('disconnect')
-def handle_disconnect():
-    print('Client disconnected')
-
-
-# Handling a custom event from client
+# Handle root route and basic error/exception
 
 
 @app.route("/", methods=["GET"])

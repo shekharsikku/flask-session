@@ -12,3 +12,4 @@ __pycache__
 
 # test code dir/files
 **/**/test
+**/**/client
